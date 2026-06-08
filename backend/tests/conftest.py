@@ -6,14 +6,19 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.db import Base, get_session
 from app.main import app
 
-# Import all models so Base.metadata is fully populated for create_all.
-import app.auth.models  # noqa: F401
-import app.constructor.models  # noqa: F401
-import app.coherence.models  # noqa: F401
+
+def _load_models() -> None:
+    """Import every model module so Base.metadata is fully populated before
+    create_all. Done lazily (inside the db fixture) so pure-logic unit tests can
+    be collected before these modules exist in earlier plan tasks."""
+    import app.auth.models  # noqa: F401
+    import app.constructor.models  # noqa: F401
+    import app.coherence.models  # noqa: F401
 
 
 @pytest_asyncio.fixture
 async def db_session():
+    _load_models()
     engine = create_async_engine("sqlite+aiosqlite:///:memory:")
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

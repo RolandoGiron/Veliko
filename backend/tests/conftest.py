@@ -8,12 +8,20 @@ from app.main import app
 
 
 def _load_models() -> None:
-    """Import every model module so Base.metadata is fully populated before
-    create_all. Done lazily (inside the db fixture) so pure-logic unit tests can
-    be collected before these modules exist in earlier plan tasks."""
-    import app.auth.models  # noqa: F401
-    import app.constructor.models  # noqa: F401
-    import app.coherence.models  # noqa: F401
+    """Import every model module that exists so Base.metadata is fully populated
+    before create_all. Done lazily (inside the db fixture) so pure-logic unit
+    tests collect before these modules exist; modules not yet created in earlier
+    plan tasks are skipped (find_spec), while real import errors still surface."""
+    import importlib
+    import importlib.util
+
+    for mod in ("app.auth.models", "app.constructor.models", "app.coherence.models"):
+        try:
+            found = importlib.util.find_spec(mod) is not None
+        except ModuleNotFoundError:
+            found = False  # parent package not created yet (earlier plan task)
+        if found:
+            importlib.import_module(mod)
 
 
 @pytest_asyncio.fixture

@@ -1,0 +1,60 @@
+services:
+  velvyko-postgres:
+    image: pgvector/pgvector:pg16
+    container_name: velvyko-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command: postgres -c max_connections=50
+    volumes:
+      - velvyko_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks: [clinic-net]
+
+  backend:
+    build: ./backend
+    container_name: velvyko-backend
+    env_file: .env
+    depends_on:
+      velvyko-postgres:
+        condition: service_healthy
+    expose: ["8000"]
+    restart: unless-stopped
+    networks: [clinic-net]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=clinic-net
+      - traefik.http.routers.velvyko-api.rule=Host(`${VELVYKO_HOST}`) && PathPrefix(`/api`)
+      - traefik.http.routers.velvyko-api.priority=20
+      - traefik.http.routers.velvyko-api.entrypoints=websecure
+      - traefik.http.routers.velvyko-api.tls.certresolver=letsencrypt
+      - traefik.http.services.velvyko-api.loadbalancer.server.port=8000
+
+  frontend:
+    build: ./frontend
+    container_name: velvyko-frontend
+    depends_on: [backend]
+    restart: unless-stopped
+    networks: [clinic-net]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=clinic-net
+      - traefik.http.routers.velvyko-web.rule=Host(`${VELVYKO_HOST}`)
+      - traefik.http.routers.velvyko-web.priority=10
+      - traefik.http.routers.velvyko-web.entrypoints=websecure
+      - traefik.http.routers.velvyko-web.tls.certresolver=letsencrypt
+      - traefik.http.services.velvyko-web.loadbalancer.server.port=80
+
+volumes:
+  velvyko_pgdata:
+
+networks:
+  clinic-net:
+    external: true       # the existing shared bridge; VERIFIED name = clinic-net
+    name: clinic-net

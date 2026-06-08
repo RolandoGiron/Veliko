@@ -19,6 +19,7 @@ build/
 .env
 .env.*
 !.env.example
+.mcp.json
 
 # OS / editor
 .DS_Store

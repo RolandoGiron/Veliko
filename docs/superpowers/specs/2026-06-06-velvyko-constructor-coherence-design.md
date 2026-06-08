@@ -3,7 +3,8 @@
 - **Fecha:** 2026-06-06
 - **Autor:** Mario García Girón (Founder & CEO / cofundador técnico)
 - **Subsistema:** Constructor Inteligente de Investigación + Scientific Coherence Engine
-- **Estado:** Diseño aprobado — pendiente de plan de implementación
+- **Estado:** Diseño aprobado — plan de implementación en `docs/superpowers/plans/2026-06-07-velvyko-constructor-coherence.md`
+- **Revisión de infra (2026-06-08):** topología verificada en vivo sobre el VPS (shell + MCPs Hostinger/n8n). Decisiones D7/D8 y §4 ajustadas a la realidad confirmada (Traefik, red `clinic-net`, Postgres dedicado con pgvector). Ver §4 y §11.
 
 ---
 
@@ -20,8 +21,11 @@ Doctoral Attack Mode™, APA Validation, DOI Verification — operan *sobre* lo 
 este subsistema produce, y tendrán sus propios specs).
 
 ### Restricción de infraestructura
-Despliegue inicial en un único VPS de **8 GB de RAM** que **ya** ejecuta otros
-contenedores (Postgres, n8n, etc.) consumiendo <3 GB hoy.
+Despliegue inicial en un único VPS de **8 GB de RAM** (`srv1533829`, 72.60.126.116)
+que **ya** ejecuta un stack de producción (n8n, evolution-api/WhatsApp, un Postgres
+de la clínica, Traefik, Redis) consumiendo **~3.2–3.6 GB** hoy (verificado
+2026-06-08). Margen real para Velvyko: ~1–1.5 GB. El proxy (Traefik) y la red
+Docker compartida (`clinic-net`) ya existen y se reutilizan.
 
 ---
 
@@ -35,8 +39,8 @@ contenedores (Postgres, n8n, etc.) consumiendo <3 GB hoy.
 | D4 | Comportamiento de validación | **Asesor por defecto** (puntúa+sugiere, nunca bloquea); **modo estricto** (bloqueante por umbral) para el tier **Doctoral** |
 | D5 | Rol de la IA frente al texto | **Solo valida y sugiere; el usuario escribe.** La IA puede sugerir mejoras pero NUNCA redacta el contenido original |
 | D6 | Idioma | **Español** en el MVP, arquitectura **i18n-ready** (inglés sin refactor) |
-| D7 | Stack | **Enfoque A — monolito modular**: React (Vite) SPA · Python + FastAPI · Postgres + pgvector · gateway LLM swappable · Docker Compose |
-| D8 | Reutilización de infra | Reusar el **Postgres existente** (DB `velvyko` + extensión pgvector). **n8n** solo para periferia (emails, tareas programadas, evals, webhooks), NUNCA para la lógica central |
+| D7 | Stack | **Enfoque A — monolito modular**: React (Vite) SPA · Python + FastAPI · Postgres + pgvector · gateway LLM swappable · Docker Compose. Proxy = **Traefik existente** (vía labels); Caddy solo para dev local |
+| D8 | Reutilización de infra | **Postgres dedicado** `pgvector/pgvector:pg16` (contenedor `velvyko-postgres`, DB `velvyko`) sobre la red `clinic-net`. *Corrección 2026-06-08:* el Postgres existente (`postgres:16-alpine`, propiedad del stack de la clínica) **no trae pgvector** y aislar los datos es más seguro → no se reutiliza. Se reutilizan **Traefik** (proxy/TLS) y la red `clinic-net`. **n8n** (ya corriendo) solo para periferia (emails, tareas programadas, evals, webhooks), NUNCA para la lógica central |
 
 ---
 
@@ -66,30 +70,32 @@ Monolito modular desplegado con un único `docker-compose`.
                     Internet
                        │
               ┌────────▼─────────┐
-              │  Caddy (proxy)   │  TLS automático  (~50 MB)
-              │  + sirve SPA     │  (reutilizar proxy existente si lo hay)
+              │ Traefik (EXISTE) │  TLS automático (Let's Encrypt)
+              │ host-mode, labels│  enruta por labels en clinic-net
               └───┬─────────┬────┘
-        /api/*    │         │   /* (estáticos)
+        Host(velvyko…)      │  Host(velvyko…) && PathPrefix(/api)
+        + estáticos         │
                   ▼         ▼
-        ┌──────────────┐  [ React SPA build ]  (estático, 0 RAM runtime)
-        │  Backend     │
-        │  FastAPI     │  (~600 MB, 2–4 workers)
-        └──────┬───────┘
-               ▼
-        ┌────────────────────────┐
-        │ Postgres + pgvector     │  (REUTILIZADO; DB `velvyko`)
-        │ (relacional + vectores) │
-        └────────────────────────┘
+   [ nginx:alpine ]   ┌──────────────┐
+   [ React SPA build] │  Backend     │
+   (estático)         │  FastAPI     │  (~600 MB, 2 workers)
+                      └──────┬───────┘
+                             ▼
+        ┌──────────────────────────────┐
+        │ velvyko-postgres (DEDICADO)   │  pgvector/pgvector:pg16
+        │ pgvector listo (memory futuro)│  red clinic-net, volumen propio
+        └──────────────────────────────┘
 ```
 
 ### Presupuesto de RAM (8 GB)
 | | RAM |
 |---|---|
-| Contenedores existentes (Postgres, n8n, etc.) | <3 GB |
-| Backend Velvyko (FastAPI) | ~600 MB |
-| Caddy (o proxy existente) | ~50 MB |
-| Frontend estático + pgvector | ~0 extra |
-| **Total** | **~3.7 GB → ~4 GB de margen** ✅ |
+| Stack de producción existente (n8n, evolution, clinic-postgres, Traefik, Redis) | ~3.2–3.6 GB (verificado) |
+| Backend Velvyko (FastAPI, 2 workers) | ~600 MB |
+| `velvyko-postgres` dedicado (idle) | ~30–50 MB |
+| Frontend (nginx estático) | ~10 MB |
+| Traefik | ya contado (existente, +0) |
+| **Total** | **~3.9–4.3 GB → ~3.7 GB de margen** ✅ |
 
 ### Módulos del backend (fronteras limpias)
 ```
@@ -318,7 +324,7 @@ calidad del juicio (LLM) con evals separados y tolerantes. Nunca los mezcles.
 - Valores exactos de los guardrails: validaciones/mes por tier, umbral del kill switch diario.
 - Umbral de score para el modo estricto (Doctoral).
 - Mínimo de palabras de los pre-checks por tipo de nodo.
-- ¿Reutilizar proxy existente del VPS o desplegar Caddy propio?
-- Versión de Postgres existente (confirmar soporte pgvector, 13+).
-- Librería de auth (propia vs solución como Authentik/Supabase-auth).
+- ~~¿Reutilizar proxy existente del VPS o desplegar Caddy propio?~~ **RESUELTO (2026-06-08):** reutilizar **Traefik existente** (host-mode, Docker provider, Let's Encrypt) vía labels; Caddy solo dev local.
+- ~~Versión de Postgres existente (confirmar soporte pgvector, 13+).~~ **RESUELTO (2026-06-08):** el Postgres existente es `postgres:16-alpine` **sin pgvector** y es de la clínica → Velvyko usa **Postgres dedicado `pgvector/pgvector:pg16`**.
+- Librería de auth (propia vs solución como Authentik/Supabase-auth). → *Plan:* JWT propio HS256 (ver Config Defaults del plan).
 ```

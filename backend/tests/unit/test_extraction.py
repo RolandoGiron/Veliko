@@ -64,3 +64,8 @@ def test_plain_parentheses_ignored():
 def test_ordered_by_position():
     cs = _ext("López (2018) lo dijo antes (García, 2020).")
     assert [c.surname for c in cs] == ["López", "García"]
+
+
+def test_narrative_with_page_number():
+    [c] = _ext("García (2020, p. 45) señala que el problema es complejo.")
+    assert (c.surname, c.year, c.narrative) == ("García", "2020", True)

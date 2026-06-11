@@ -14,7 +14,7 @@ _PAGES = r"(?:\s*,\s*pp?\.\s*[\d\s,–\-]+)?"
 
 _PAREN_RE = re.compile(rf"(?P<auth>{_AUTHORS})\s*,\s*(?P<year>{_YEAR}){_PAGES}")
 _PAREN_NO_COMMA_RE = re.compile(rf"(?P<auth>{_AUTHORS})\s+(?P<year>\d{{4}}[a-z]?)")
-_NARRATIVE_RE = re.compile(rf"(?P<auth>{_AUTHORS})\s+\((?P<year>{_YEAR})\)")
+_NARRATIVE_RE = re.compile(rf"(?P<auth>{_AUTHORS})\s+\((?P<year>{_YEAR}){_PAGES}\)")
 _ET_AL_RE = re.compile(r"\bet\s+al\.?")
 
 
@@ -54,6 +54,8 @@ def extract_citations(node_type: NodeType, content: str) -> list[Citation]:
             if cm is None:
                 continue
             surnames, et_al = _parse_authors(cm.group("auth"))
+            if not surnames:
+                continue
             found.append((pos, Citation(
                 node_type=node_type, raw=f"({seg})", surname=surnames[0],
                 surnames=surnames, year=cm.group("year"), narrative=False,
@@ -62,6 +64,8 @@ def extract_citations(node_type: NodeType, content: str) -> list[Citation]:
 
     for m in _NARRATIVE_RE.finditer(content):
         surnames, et_al = _parse_authors(m.group("auth"))
+        if not surnames:
+            continue
         found.append((m.start(), Citation(
             node_type=node_type, raw=m.group(0), surname=surnames[0],
             surnames=surnames, year=m.group("year"), narrative=True, et_al=et_al,

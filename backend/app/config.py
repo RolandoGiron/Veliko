@@ -21,6 +21,10 @@ class Settings(BaseSettings):
     circuit_breaker_cooldown_s: int = 60
     llm_timeout_s: float = 30.0
 
+    lookup_timeout_s: float = 8.0
+    lookup_cache_ttl_days: int = 30
+    crossref_mailto: str = "admin@srv1533829.hstgr.cloud"
+
 
 @lru_cache
 def get_settings() -> Settings:

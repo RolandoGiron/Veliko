@@ -148,3 +148,23 @@ async def test_cached_lookup_expired_refetches(db_session):
     r = await cached_lookup(db_session, Fake(), "Bandura", 1977, now=now, ttl_days=30)
     assert calls == [1]
     assert r.status == ExistenceStatus.no_encontrada
+
+
+@pytest.mark.xfail(
+    reason="pendiente Fix 1 de la review de Tarea 5: match multi-token en _openalex",
+    strict=False,
+)
+async def test_openalex_compound_surname_matches():
+    body = {"results": [{
+        "title": "Obra",
+        "doi": None,
+        "authorships": [{"author": {"display_name": "Ana García López"}}],
+    }]}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if "crossref" in req.url.host:
+            return httpx.Response(200, json=EMPTY_CROSSREF)
+        return httpx.Response(200, json=body)
+
+    r = await _client(handler).lookup("García López", 2020)
+    assert r.status == ExistenceStatus.encontrada

@@ -1,12 +1,16 @@
 import type { NodeState } from "../api/types";
 
-const MAP: Record<NodeState, { icon: string; label: string }> = {
-  sin_validar: { icon: "⚪", label: "Sin validar" },
-  valido: { icon: "🟢", label: "Válido" },
-  obsoleto: { icon: "🟡", label: "Obsoleto" },
+const MAP: Record<NodeState, string> = {
+  sin_validar: "Sin validar",
+  valido: "Válido",
+  obsoleto: "Obsoleto",
 };
 
 export function FreshnessBadge({ state }: { state: NodeState }) {
-  const m = MAP[state];
-  return <span title={m.label}>{m.icon} {m.label}</span>;
+  return (
+    <span className={`badge badge--${state}`} title={MAP[state]}>
+      <span className="dot" />
+      {MAP[state]}
+    </span>
+  );
 }

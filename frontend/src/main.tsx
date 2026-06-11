@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { LoginPage } from "./pages/LoginPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { ProjectPage } from "./pages/ProjectPage";
+import "./index.css";
 
 const qc = new QueryClient();
 

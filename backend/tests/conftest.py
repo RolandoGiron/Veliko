@@ -15,7 +15,7 @@ def _load_models() -> None:
     import importlib
     import importlib.util
 
-    for mod in ("app.auth.models", "app.constructor.models", "app.coherence.models"):
+    for mod in ("app.auth.models", "app.constructor.models", "app.coherence.models", "app.verification.models"):
         try:
             found = importlib.util.find_spec(mod) is not None
         except ModuleNotFoundError:

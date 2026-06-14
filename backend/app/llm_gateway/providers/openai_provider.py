@@ -26,7 +26,8 @@ class OpenAIProvider:
         self._client = instructor.from_openai(openai.OpenAI(api_key=api_key))
 
     def validate(
-        self, *, model: str, system_prompt: str, user_prompt: str, timeout_s: float
+        self, *, model: str, system_prompt: str, user_prompt: str, timeout_s: float,
+        response_model: type = None,
     ) -> LLMResult:
         try:
             verdict, completion = self._client.chat.completions.create_with_completion(
@@ -35,7 +36,7 @@ class OpenAIProvider:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_prompt},
                 ],
-                response_model=CoherenceVerdict,
+                response_model=response_model or CoherenceVerdict,
                 max_retries=2,
                 timeout=timeout_s,
             )

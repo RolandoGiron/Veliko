@@ -1,6 +1,7 @@
 from datetime import date
 
 import pytest
+from pydantic import BaseModel
 
 from app.coherence.contracts import CoherenceVerdict
 from app.llm_gateway.base import LLMResult
@@ -16,7 +17,7 @@ class FakeProvider:
         self._raises = raises
         self._calls_to_fail = calls_to_fail
 
-    def validate(self, *, model, system_prompt, user_prompt, timeout_s):
+    def validate(self, *, model, system_prompt, user_prompt, timeout_s, response_model=None):
         self.calls += 1
         if self._raises and self.calls <= self._calls_to_fail:
             raise self._raises
@@ -78,3 +79,25 @@ def test_breaker_opens_after_repeated_unavailable():
     with pytest.raises(LLMUnavailable):
         gw.validate(model="m", system_prompt="s", user_prompt="u", today=date(2026, 6, 7))
     assert p.calls == calls_before  # breaker open -> provider not called
+
+
+class _Tiny(BaseModel):
+    ok: bool
+
+
+def test_gateway_passes_response_model_through():
+    seen = {}
+
+    class RecordingProvider:
+        def validate(self, *, model, system_prompt, user_prompt, timeout_s,
+                     response_model):
+            seen["rm"] = response_model
+            return LLMResult(verdict=_Tiny(ok=True), model_used=model,
+                             tokens_used=1, cost_usd=0.0)
+
+    gw = LLMGateway(RecordingProvider(), DailyBudget(limit_usd=10),
+                    CircuitBreaker(5, 60), timeout_s=5)
+    out = gw.validate(model="m", system_prompt="s", user_prompt="u",
+                      today=date(2026, 6, 11), response_model=_Tiny)
+    assert seen["rm"] is _Tiny
+    assert out.verdict.ok is True

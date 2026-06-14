@@ -50,6 +50,8 @@ async def test_found_in_both_sources():
     assert r.status == ExistenceStatus.encontrada
     assert len(r.candidates) == 2
     assert {c.source for c in r.candidates} == {"crossref", "openalex"}
+    # Fix 3: OpenAlex DOI normalized to bare form, matching Crossref.
+    assert all(c.doi == "10.1037/0033-295x.84.2.191" for c in r.candidates)
 
 
 async def test_no_author_match_is_no_encontrada():
@@ -150,10 +152,6 @@ async def test_cached_lookup_expired_refetches(db_session):
     assert r.status == ExistenceStatus.no_encontrada
 
 
-@pytest.mark.xfail(
-    reason="pendiente Fix 1 de la review de Tarea 5: match multi-token en _openalex",
-    strict=False,
-)
 async def test_openalex_compound_surname_matches():
     body = {"results": [{
         "title": "Obra",
@@ -168,3 +166,39 @@ async def test_openalex_compound_surname_matches():
 
     r = await _client(handler).lookup("García López", 2020)
     assert r.status == ExistenceStatus.encontrada
+
+
+async def test_lookup_truncates_to_three_candidates():
+    body = {"message": {"items": [
+        {"title": [t], "DOI": str(i), "author": [{"family": "Bandura"}]}
+        for i, t in enumerate("ABCD")
+    ]}}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        if "crossref" in req.url.host:
+            return httpx.Response(200, json=body)
+        return httpx.Response(200, json=EMPTY_OPENALEX)
+
+    r = await _client(handler).lookup("Bandura", 1977)
+    assert len(r.candidates) == 3
+
+
+async def test_cached_lookup_stale_on_failure(db_session):
+    """An expired row + client returning no_verificable serves the stale data:
+    existence does not expire, so a prior positive match is honored on outage."""
+
+    class Failing:
+        async def lookup(self, surname: str, year: int) -> LookupResult:
+            return LookupResult(status=ExistenceStatus.no_verificable)
+
+    now = datetime.now(timezone.utc)
+    db_session.add(CitationLookup(
+        surname_norm="bandura", year=1977, status="encontrada",
+        candidates=[{"title": "t", "doi": "d", "year": 1977, "source": "crossref"}],
+        fetched_at=now - timedelta(days=31),
+    ))
+    await db_session.flush()
+
+    r = await cached_lookup(db_session, Failing(), "Bandura", 1977, now=now, ttl_days=30)
+    assert r.status == ExistenceStatus.encontrada
+    assert r.candidates[0].doi == "d"

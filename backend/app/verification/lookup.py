@@ -47,7 +47,7 @@ class CrossrefOpenAlexClient:
         self._timeout = timeout_s
 
     async def lookup(self, surname: str, year: int) -> LookupResult:
-        target = normalize_surname(surname)
+        target = set(normalize_surname(surname).split())
         results = await asyncio.gather(
             self._crossref(surname, year, target),
             self._openalex(surname, year, target),
@@ -63,7 +63,9 @@ class CrossrefOpenAlexClient:
             return LookupResult(status=ExistenceStatus.no_encontrada)
         return LookupResult(status=ExistenceStatus.encontrada, candidates=candidates[:3])
 
-    async def _crossref(self, surname: str, year: int, target: str) -> list[Candidate]:
+    async def _crossref(
+        self, surname: str, year: int, target: set[str]
+    ) -> list[Candidate]:
         r = await self._http.get(
             "https://api.crossref.org/works",
             params={
@@ -78,14 +80,18 @@ class CrossrefOpenAlexClient:
         out: list[Candidate] = []
         for item in r.json().get("message", {}).get("items", []):
             families = [a.get("family", "") for a in item.get("author", [])]
-            if not any(normalize_surname(f) == target for f in families if f):
+            if not any(
+                target <= set(normalize_surname(f).split()) for f in families if f
+            ):
                 continue
             title = (item.get("title") or [""])[0]
             out.append(Candidate(title=title, doi=item.get("DOI"), year=year,
                                  source="crossref"))
         return out
 
-    async def _openalex(self, surname: str, year: int, target: str) -> list[Candidate]:
+    async def _openalex(
+        self, surname: str, year: int, target: set[str]
+    ) -> list[Candidate]:
         r = await self._http.get(
             "https://api.openalex.org/works",
             params={
@@ -104,15 +110,25 @@ class CrossrefOpenAlexClient:
                 for a in item.get("authorships", [])
             ]
             tokens = {normalize_surname(t) for n in names for t in n.split()}
-            if target not in tokens:
+            if not target <= tokens:
                 continue
-            out.append(Candidate(title=item.get("title") or "", doi=item.get("doi"),
+            doi = item.get("doi")
+            if doi:
+                doi = doi.removeprefix("https://doi.org/")
+            out.append(Candidate(title=item.get("title") or "", doi=doi,
                                  year=year, source="openalex"))
         return out
 
 
 def _as_aware(dt: datetime) -> datetime:
     return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+
+
+def _row_to_result(row: CitationLookup) -> LookupResult:
+    return LookupResult(
+        status=ExistenceStatus(row.status),
+        candidates=[Candidate(**c) for c in row.candidates],
+    )
 
 
 async def cached_lookup(
@@ -124,20 +140,21 @@ async def cached_lookup(
     now: datetime,
     ttl_days: int,
 ) -> LookupResult:
+    now = _as_aware(now)
     key = normalize_surname(surname)
-    row = await session.get(CitationLookup, (key, year))
+    row = await session.get(CitationLookup, {"surname_norm": key, "year": year})
     if row is not None and _as_aware(row.fetched_at) >= now - timedelta(days=ttl_days):
-        return LookupResult(
-            status=ExistenceStatus(row.status),
-            candidates=[Candidate(**c) for c in row.candidates],
-        )
+        return _row_to_result(row)
     result = await client.lookup(surname, year)
-    if result.status is not ExistenceStatus.no_verificable:
-        if row is None:
-            row = CitationLookup(surname_norm=key, year=year)
-            session.add(row)
-        row.status = result.status.value
-        row.candidates = [asdict(c) for c in result.candidates]
-        row.fetched_at = now
-        await session.flush()
+    if result.status is ExistenceStatus.no_verificable:
+        # Stale-on-failure: existence does not expire, so honor a prior cached
+        # match when both upstream sources are unreachable.
+        return _row_to_result(row) if row is not None else result
+    if row is None:
+        row = CitationLookup(surname_norm=key, year=year)
+        session.add(row)
+    row.status = result.status.value
+    row.candidates = [asdict(c) for c in result.candidates]
+    row.fetched_at = now
+    await session.flush()
     return result

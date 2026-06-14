@@ -12,7 +12,7 @@
 
 ---
 
-## ESTADO DE EJECUCIÓN — actualizado 2026-06-11 (sesión interrumpida; retomar aquí)
+## ESTADO DE EJECUCIÓN — actualizado 2026-06-14 (retomar en Tarea 6)
 
 Modo de ejecución: **superpowers:subagent-driven-development** (un implementador por tarea + review de spec + review de calidad; los reviews ya encontraron y corrigieron bugs reales — no saltárselos). Commits directos a `main` (convención del repo).
 
@@ -22,18 +22,8 @@ Modo de ejecución: **superpowers:subagent-driven-development** (un implementado
 | 2. Extracción | ✅ hecha + aprobada | `a5d7ba7` + fix `c1b8c31` | Fix de review: narrativas con página + guard surnames vacíos |
 | 3. Checks APA-7 | ✅ hecha + aprobada | `b263439` | |
 | 4. Modelos | ✅ hecha + aprobada | `cbb4be9` | conftest usa tupla `_load_models` |
-| 5. Lookup | ⚠️ implementada (`34097f3`), review hecha, **FIXES PENDIENTES** | — | Ver bloque siguiente |
+| 5. Lookup | ✅ hecha + review aplicada | `34097f3` + fix `dad976a` | Fixes 1-4,6,8 aplicados; 13 tests verdes; suite 88/88 |
 | 6–14 | ⬜ pendientes | — | Ejecutar en orden del plan |
-
-**Tarea 5 — fixes pendientes de la review** (informe completo en la memoria `lookup-review-2026-06-11`; decisión del controlador: aplicar hallazgos 1, 2, 3, 4, 6 y 8; descartar 5 —`_as_aware` NO es código muerto, sqlite devuelve naive en tests— y 9 —teórico—):
-
-1. **(Critical) `_openalex` multi-token surname:** target con espacios nunca matchea un token. Test ya añadido en `tests/unit/test_lookup.py` como `test_openalex_compound_surname_matches`, marcado `xfail` para no romper CI — **quitar el marker al arreglar**. Fix: `target_tokens = target.split()` y `all(t in tokens for t in target_tokens)`; en `_crossref` aceptar también `target_tokens <= set(f.split())`.
-2. **(Critical) Stale-on-failure en `cached_lookup`:** si la fila cacheada expiró y el cliente devuelve `no_verificable`, devolver el dato cacheado viejo (la existencia no caduca). Test nuevo: fila expirada `encontrada` + cliente que devuelve `no_verificable` → se sirve `encontrada`. Extraer helper `_row_to_result(row)`.
-3. **(Important) DOI de OpenAlex normalizado a forma bare:** `doi.removeprefix("https://doi.org/")` en `_openalex`. Test: OPENALEX_OK debe producir `doi == "10.1037/0033-295x.84.2.191"`.
-4. **(Minor) `now = _as_aware(now)`** al inicio de `cached_lookup`; `session.get` con dict `{"surname_norm": key, "year": year}`.
-5. **(Minor, solo test) truncado a 3 candidatos:** crossref con 4 items matching → `len(r.candidates) == 3`.
-
-Commit sugerido del fix: `fix(verification): compound surnames, stale-on-failure cache, bare DOI normalization`. Después de los fixes, re-ejecutar suite completa y marcar Tarea 5 como hecha.
 
 **Decisiones ya tomadas con el usuario (no volver a preguntar):** solo Fase 2; citas en-texto dentro de los 6 nodos (sin sección de referencias); validación APA híbrida determinista+LLM; ejecución con subagentes; diseño y spec aprobados (`docs/superpowers/specs/2026-06-11-velvyko-citation-verification-design.md`).
 

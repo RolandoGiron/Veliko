@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
 from app.constructor.models import ResearchProject
+from app.verification.errors import ProjectNotFound
 from app.verification.lookup import CrossrefOpenAlexClient, LookupClient
 from app.verification.models import CitationFinding, CitationRun
 
@@ -28,7 +29,7 @@ async def get_latest_run(
 ) -> tuple[CitationRun, list[CitationFinding]] | None:
     project = await session.get(ResearchProject, project_id)
     if project is None or project.user_id != user_id:
-        raise LookupError("project not found")
+        raise ProjectNotFound("project not found")
     run = await session.scalar(
         select(CitationRun)
         .where(CitationRun.project_id == project_id)

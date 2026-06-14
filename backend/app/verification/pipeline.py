@@ -14,6 +14,7 @@ from app.i18n.prompts import CITATION_SYSTEM_PROMPT_ES, build_citation_prompt
 from app.llm_gateway.errors import LLMError
 from app.verification.apa_checks import run_apa_checks
 from app.verification.contracts import CitationStyleReview
+from app.verification.errors import ProjectNotFound
 from app.verification.extraction import Citation, extract_citations
 from app.verification.lookup import (
     ExistenceStatus,
@@ -38,7 +39,7 @@ async def verify_citations(
 ) -> tuple[CitationRun, list[CitationFinding]]:
     project = await session.get(ResearchProject, project_id)
     if project is None or project.user_id != user_id:
-        raise LookupError("project not found")
+        raise ProjectNotFound("project not found")
     res = await session.scalars(select(Node).where(Node.project_id == project_id))
     nodes = {NodeType(n.type): n for n in res}
 

@@ -10,6 +10,7 @@ from app.db import get_session
 from app.entitlements.errors import RateLimited
 from app.entitlements.ratelimit import SlidingWindowLimiter
 from app.verification import pipeline
+from app.verification.errors import ProjectNotFound
 from app.verification.models import CitationFinding, CitationRun
 from app.verification.schemas import CandidateOut, CitationRunOut, FindingOut
 from app.verification.service import get_latest_run, get_lookup_client
@@ -59,7 +60,7 @@ async def verify_citations(
             user_id=user.id, tier=user.tier, project_id=project_id,
             today=datetime.now(timezone.utc).date(),
         )
-    except LookupError:
+    except ProjectNotFound:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "project not found")
     return _to_out(run, findings)
 
@@ -72,7 +73,7 @@ async def latest_run(
 ):
     try:
         found = await get_latest_run(session, user.id, project_id)
-    except LookupError:
+    except ProjectNotFound:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "project not found")
     if found is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "no runs yet")

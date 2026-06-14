@@ -25,4 +25,7 @@ export const api = {
     req(`/projects/${pid}/nodes/${type}`, { method: "PUT", body: JSON.stringify({ content }) }),
   validate: (pid: string, type: string) =>
     req(`/projects/${pid}/nodes/${type}/validate`, { method: "POST" }),
+  verifyCitations: (pid: string) =>
+    req(`/projects/${pid}/verify-citations`, { method: "POST" }),
+  latestCitations: (pid: string) => req(`/projects/${pid}/verify-citations/latest`),
 };

@@ -855,6 +855,19 @@ textarea.field {
   .auth__aside { gap: 1.5rem; padding-bottom: 2.5rem; }
 }
 
+/* ---- Verificación de citas ---- */
+.verif { margin-top: 2.5rem; padding: 1.5rem; }
+.verif__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+.verif__body { margin-top: 1rem; display: grid; gap: 1rem; }
+.verif__list { list-style: none; padding: 0; display: grid; gap: .6rem; }
+.cite { border: 1px solid var(--line, #e5e7eb); border-radius: 10px; padding: .7rem .9rem; }
+.cite[data-tone="low"] { border-color: #f59e0b; }
+.cite__head { display: flex; justify-content: space-between; gap: .8rem; flex-wrap: wrap; }
+.cite__raw { font-size: .9em; }
+.cite__existence { font-size: .85em; white-space: nowrap; }
+.cite__issues, .cite__candidates { margin: .5rem 0 0; padding-left: 1rem; font-size: .9em; }
+.verif__llm { border-top: 1px dashed var(--line, #e5e7eb); padding-top: .8rem; }
+
 /* ============================================================================
    Reduced motion
    ========================================================================== */

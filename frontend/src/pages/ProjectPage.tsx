@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api/client";
 import type { ProjectDetail, ValidationOut, NodeType } from "../api/types";
 import { NodeEditor } from "../components/NodeEditor";
+import { VerificationPanel } from "../components/VerificationPanel";
 import { AppBar } from "../components/AppBar";
 import { NODE_ORDER } from "../ui/nodeMeta";
 
@@ -74,6 +75,8 @@ export function ProjectPage() {
             />
           ))}
         </div>
+
+        <VerificationPanel projectId={id} />
       </main>
     </>
   );

@@ -87,7 +87,7 @@ Timeout por fuente: 8 s. Sin retries (el usuario puede re-ejecutar).
 candidatos, `fetched_at`; TTL 30 días. Evita repetir búsquedas entre ejecuciones y
 entre usuarios.
 
-**Anti-abuso:** reutiliza el rate-limit por proyecto existente (10 ejecuciones/min).
+**Anti-abuso:** se añade un limitador en memoria por proyecto (10 ejecuciones/min, `entitlements/ratelimit.py`).
 Las búsquedas externas no consumen cuota LLM mensual.
 
 ## 6. Capa LLM (híbrida, tier-gated)

@@ -6,6 +6,19 @@ instrumentos) y un **Scientific Coherence Engine** (LLM-juez con salida estructu
 frescura en cascada por hash, gate asesor/estricto por tier, guardrails de costo,
 errores fail-closed).
 
+**Verificación de citas (Fase 2):** módulo `verification` + panel "Verificación de citas"
+que, bajo demanda, valida el formato APA-7 de las citas en-texto (checks deterministas +
+revisión de estilo LLM tier-gated) y verifica su existencia contra Crossref/OpenAlex
+(anti-alucinación, fail-closed), limitado a 10 ejecuciones/min por proyecto.
+
+## API
+
+- `POST /api/projects/{project_id}/verify-citations` — ejecuta la verificación de citas
+  (checks de formato APA-7 + lookup de existencia Crossref/OpenAlex + revisión de estilo
+  LLM por tier), limitado por proyecto; devuelve un `CitationRunOut`.
+- `GET /api/projects/{project_id}/verify-citations/latest` — último run de verificación
+  persistido del proyecto (404 si no hay ninguno).
+
 ## Local dev
 1. Backend: `cd backend && pip install -e ".[dev]" && uvicorn app.main:app --reload`
 2. Frontend: `cd frontend && npm install && npm run dev` (proxies /api to :8000)

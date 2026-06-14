@@ -147,9 +147,12 @@ async def cached_lookup(
         return _row_to_result(row)
     result = await client.lookup(surname, year)
     if result.status is ExistenceStatus.no_verificable:
-        # Stale-on-failure: existence does not expire, so honor a prior cached
-        # match when both upstream sources are unreachable.
-        return _row_to_result(row) if row is not None else result
+        # Stale-on-failure: a prior POSITIVE match does not expire, so honor it
+        # when both upstream sources are unreachable. A stale negative is NOT
+        # resurfaced — during an outage we must not imply "posible inventada".
+        if row is not None and row.status == ExistenceStatus.encontrada.value:
+            return _row_to_result(row)
+        return result
     if row is None:
         row = CitationLookup(surname_norm=key, year=year)
         session.add(row)

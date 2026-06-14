@@ -202,3 +202,22 @@ async def test_cached_lookup_stale_on_failure(db_session):
     r = await cached_lookup(db_session, Failing(), "Bandura", 1977, now=now, ttl_days=30)
     assert r.status == ExistenceStatus.encontrada
     assert r.candidates[0].doi == "d"
+
+
+async def test_cached_lookup_stale_negative_not_resurfaced(db_session):
+    """An expired no_encontrada row must NOT be resurfaced on outage: during a
+    full outage we return no_verificable rather than implying 'posible inventada'."""
+
+    class Failing:
+        async def lookup(self, surname: str, year: int) -> LookupResult:
+            return LookupResult(status=ExistenceStatus.no_verificable)
+
+    now = datetime.now(timezone.utc)
+    db_session.add(CitationLookup(
+        surname_norm="zzyzwicz", year=2019, status="no_encontrada", candidates=[],
+        fetched_at=now - timedelta(days=31),
+    ))
+    await db_session.flush()
+
+    r = await cached_lookup(db_session, Failing(), "Zzyzwicz", 2019, now=now, ttl_days=30)
+    assert r.status == ExistenceStatus.no_verificable

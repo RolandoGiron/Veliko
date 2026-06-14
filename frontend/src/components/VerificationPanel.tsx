@@ -11,7 +11,7 @@ const EXISTENCE_UI: Record<string, { icon: string; label: string; tone: string }
 };
 
 function Finding({ f }: { f: FindingOut }) {
-  const ex = EXISTENCE_UI[f.existence_status];
+  const ex = EXISTENCE_UI[f.existence_status] ?? EXISTENCE_UI.no_verificable;
   return (
     <li className="cite" data-tone={ex.tone}>
       <div className="cite__head">
@@ -88,12 +88,12 @@ export function VerificationPanel({ projectId }: { projectId: string }) {
             Formato APA-7 y existencia en Crossref/OpenAlex (anti-alucinación).
           </p>
         </div>
-        <button className="btn" onClick={onRun} disabled={busy}>
+        <button className="btn" onClick={onRun} disabled={busy} aria-busy={busy}>
           {busy ? "Verificando…" : "Verificar citas"}
         </button>
       </header>
 
-      {error && <p className="vp vp--warn">⚠ {error}</p>}
+      {error && <p className="vp vp--warn" role="alert">⚠ {error}</p>}
 
       {run && (
         <div className="verif__body">

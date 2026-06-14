@@ -856,6 +856,7 @@ textarea.field {
 }
 
 /* ---- Verificación de citas ---- */
+.muted { color: var(--muted); }
 .verif { margin-top: 2.5rem; padding: 1.5rem; }
 .verif__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
 .verif__body { margin-top: 1rem; display: grid; gap: 1rem; }

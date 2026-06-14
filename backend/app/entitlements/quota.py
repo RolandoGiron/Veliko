@@ -32,5 +32,16 @@ async def consume_monthly_quota(
             ValidationResult.created_at >= start,
         )
     )
-    if (used or 0) >= limit:
+    from app.verification.models import CitationRun  # local import: avoid cycles
+
+    citation_runs = await session.scalar(
+        select(func.count())
+        .select_from(CitationRun)
+        .where(
+            CitationRun.user_id == user_id,
+            CitationRun.llm_used.is_(True),
+            CitationRun.created_at >= start,
+        )
+    )
+    if (used or 0) + (citation_runs or 0) >= limit:
         raise QuotaExceeded(f"monthly quota {limit} reached for tier {tier}")

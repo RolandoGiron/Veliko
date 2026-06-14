@@ -12,18 +12,29 @@
 
 ---
 
-## ESTADO DE EJECUCIÓN — actualizado 2026-06-14 (retomar en Tarea 6)
+## ESTADO DE EJECUCIÓN — COMPLETADO 2026-06-14 (Fase 2 lista para shipping)
 
-Modo de ejecución: **superpowers:subagent-driven-development** (un implementador por tarea + review de spec + review de calidad; los reviews ya encontraron y corrigieron bugs reales — no saltárselos). Commits directos a `main` (convención del repo).
+Modo de ejecución: **superpowers:subagent-driven-development** (un implementador por tarea + review de spec + review de calidad). Commits directos a `main` (convención del repo). Estado final: **suite backend 113/113 verde, build frontend limpio**, revisión final de toda la feature aprobada (Ready to merge: Yes).
 
 | Tarea | Estado | Commit | Notas |
 |---|---|---|---|
-| 1. Config + httpx | ✅ hecha + aprobada | `7d34e9f` | |
-| 2. Extracción | ✅ hecha + aprobada | `a5d7ba7` + fix `c1b8c31` | Fix de review: narrativas con página + guard surnames vacíos |
-| 3. Checks APA-7 | ✅ hecha + aprobada | `b263439` | |
-| 4. Modelos | ✅ hecha + aprobada | `cbb4be9` | conftest usa tupla `_load_models` |
-| 5. Lookup | ✅ hecha + review aplicada | `34097f3` + fix `dad976a` | Fixes 1-4,6,8 aplicados; 13 tests verdes; suite 88/88 |
-| 6–14 | ⬜ pendientes | — | Ejecutar en orden del plan |
+| 1. Config + httpx | ✅ | `7d34e9f` | |
+| 2. Extracción | ✅ | `a5d7ba7` + `c1b8c31` | |
+| 3. Checks APA-7 | ✅ | `b263439` | |
+| 4. Modelos | ✅ | `cbb4be9` | |
+| 5. Lookup | ✅ | `34097f3` + `dad976a` | Fixes review 1-4,6,8 |
+| 6. Gateway response_model | ✅ | `fad1321` + `a802835` | Genérico, default CoherenceVerdict |
+| 7. Contrato LLM + prompts | ✅ | `9e24911` | |
+| 8. Rate limiter + cuota | ✅ | `42f7927` | |
+| 9. Pipeline | ✅ | `52ce9d8` | |
+| 10. Endpoints HTTP | ✅ | `019e60e` + `021d5ad` | Fix: ProjectNotFound sentinel |
+| 11. Migración Alembic | ✅ | `2b5599b` | |
+| 12. Frontend panel | ✅ | `205724f` + `ac73dc4` | + polish .muted/a11y |
+| 13. Evals (no-CI) | ✅ | `7ea8bbc` | |
+| 14. Verificación + docs | ✅ | `67f8255` | |
+| Extra (review final) | ✅ | `7c74548` | stale-negative no se resirve en outage |
+
+**Follow-ups Minor diferidos** (de la review final, no bloqueantes): (a) spec §10 menciona config `citation_llm_tiers` que no se implementó — los tiers están hardcoded en `pipeline.py` (`LLM_TIERS`); decidir si añadir la setting o quitar del spec. (b) Tipos TS `format_issues`/`project_issues` son un mirror un poco estrecho (omiten `citation_raw`); cosmético. (c) httpx singleton en `service.py` sin cierre en lifespan (MVP-aceptable). (d) `coherence/router.py` tiene el mismo `except LookupError→404` masking que se corrigió en verification — alinear si se quiere.
 
 **Decisiones ya tomadas con el usuario (no volver a preguntar):** solo Fase 2; citas en-texto dentro de los 6 nodos (sin sección de referencias); validación APA híbrida determinista+LLM; ejecución con subagentes; diseño y spec aprobados (`docs/superpowers/specs/2026-06-11-velvyko-citation-verification-design.md`).
 

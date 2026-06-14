@@ -1,6 +1,8 @@
 import anthropic
 import instructor
 
+from pydantic import BaseModel
+
 from app.coherence.contracts import CoherenceVerdict
 from app.llm_gateway.base import LLMResult
 from app.llm_gateway.errors import (
@@ -29,7 +31,7 @@ class AnthropicProvider:
 
     def validate(
         self, *, model: str, system_prompt: str, user_prompt: str, timeout_s: float,
-        response_model: type = None,
+        response_model: type[BaseModel] | None = None,
     ) -> LLMResult:
         try:
             verdict, completion = self._client.chat.completions.create_with_completion(
